@@ -1,0 +1,8 @@
+{
+	"name": "noprotocol/socialcast",
+	"description": "PHP Client for Socialcast’s REST API",
+	"keywords": ["socialcast"],
+	"require": {
+		"sledgehammer/core": "*"
+	}
+}
