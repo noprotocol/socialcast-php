@@ -23,33 +23,35 @@ use Socialcast\Resource\User;
  * @link http://developers.socialcast.com/api-documentation/
  *
  * @method Resource postAttachment($attachment)  Create an Attachment
- * @method User getUserinfo()  View Authenticated User Profile
+ * @method User getUserinfo($parameters = array())  View Authenticated User Profile
  * @method User getUser($userId)  View User Profile
- * @method User[] getUsers()  List Users in Your Company
+ * @method User[] searchUsers($querystring, $parameters = array())  Search Users in Your Company
+ * @method User[] getUsers($parameters = array())  List Users in Your Company
  * @method Resource putUser($user)  Update User Profile
  * @method Resource deleteUser($userId)  Deactivate a User
- * @method GroupMembership[] getGroupMemberships()  Listing Group Memberships
- * @method Group[] getGroups()  Listing All Groups
+ * @method GroupMembership[] getGroupMemberships($parameters = array())  Listing Group Memberships
+ * @method Group[] getGroups($parameters = array())  Listing All Groups
  * @method Group getGroup($groupId)  Show a Single Group
  * @method Resource postGroup($group)  Create a Group
  * @method Resource putGroup($group)  Updating Existing Group
  * @method Resource deleteGroup($groupId)  Destroy an Archived Message
- * @method Message[] getMessages()  Reading Stream Messages
+ * @method Message[] getMessages($parameters = array())  Reading Stream Messages
  * @method Message getMessage($messageId)  Read a Single Stream Message
+ * @method Message[] searchMessages($querystring, $parameters = array())  Searching Messages
  * @method Resource postMessage($message)  Creating New Messages
  * @method Resource putMessage($message)  Updating Existing Messages
  * @method Resource deleteMessage($messageId)  Destroy an existing message
- * @method ContentFilter[] getContentFilters()  Listing Tenant Content Filters
+ * @method ContentFilter[] getContentFilters($parameters = array())  Listing Tenant Content Filters
  * @method Conversation getConversation($conversationId)  Returns information of the referenced conversation
- * @method Conversation[] getConversations()  List all conversations that a user has access to
+ * @method Conversation[] getConversations($parameters = array())  List all conversations that a user has access to
  * @method Resource postConversation($conversation)  Create a new conversation
  * @method Resource ()  Acknowledge that a user has read the latest remarks in all of their conversations. This will clear the unread flag on all of their conversations.
- * @method Category[] getCategories()  Listing Tenant Categories
- * @method Stream[] getStreams()  Listing User’s Streams
+ * @method Category[] getCategories($parameters = array())  Listing Tenant Categories
+ * @method Stream[] getStreams($parameters = array())  Listing User’s Streams
  * @method Poll getPoll($pollId)  View Poll Data
  * @method Resource postPoll($poll)  Create a poll
  * @method Resource postThank($thank)  Create Thanks
- * @method Badge[] getBadges()  Get list of Thanks Badges
+ * @method Badge[] getBadges($parameters = array())  Get list of Thanks Badges
  * @method Badge getBadge($badgeId)  Get a specific badge
  */
 abstract class Client extends Object {
@@ -63,9 +65,10 @@ abstract class Client extends Object {
     /**
      * Perform a GET api call.
      * @param string $path Example: 'userinfo' or 'users/123/followers'
+     * @param array $params The GET parameters Example: ['q' => 'test'] add `?q=test` to the url.
      */
-    public function get($path, $class = 'Socialcast\Resource') {
-        $request = Curl::get($this->buildUrl($path), $this->curlOptions());
+    public function get($path, $params = array()) {
+        $request = Curl::get($this->buildUrl($path, $params), $this->curlOptions());
         return $this->processRequest($request);
     }
 
@@ -102,6 +105,11 @@ abstract class Client extends Object {
                 'arguments' => array(
                     '[0]' => 'USER_ID',
                 ),
+            ),
+            'searchUsers' => array(
+                'path' => 'users/search',
+                'class' => '\Socialcast\Resource\User',
+                'arguments' => array(),
             ),
             'getUsers' => array(
                 'path' => 'users',
@@ -169,6 +177,11 @@ abstract class Client extends Object {
                 'arguments' => array(
                     '[0]' => 'MESSAGE_ID',
                 ),
+            ),
+            'searchMessages' => array(
+                'path' => 'messages/search',
+                'class' => '\Socialcast\Resource\Message',
+                'arguments' => array(),
             ),
             'postMessage' => array(
                 'path' => 'messages',
@@ -270,12 +283,22 @@ abstract class Client extends Object {
                 $url = str_replace($target, $value, $url); // Replace USER_ID in the url with the $userId param
             }
         }
-        preg_match('/^(get|post|put|delete)/', $method, $match);
-        $httpMethod = $match[1];
-        if (in_array($httpMethod, array('get', 'delete'))) {
-            $response = $this->$httpMethod($url);
+        preg_match('/^(get|post|put|delete|search)/', $method, $match);
+        $methodType = $match[1];
+        if ($methodType === 'search') {
+            $params = count($arguments) === 1 ? array() : $arguments[1];
+            $params['q'] = $arguments[0];
+            $response = $this->get($url, $params);
+        } elseif ($methodType === 'get') {
+            $params = array();
+            if (count($arguments) > count($config['arguments'])) {
+                $params = $arguments[count($config['arguments'])];
+            }
+            $response = $this->get($url, $params);
+        } elseif ($methodType === 'delete') {
+            $response = $this->delete($url);
         } else { // post or put
-            $response = $this->$httpMethod($url, $body);
+            $response = $this->$methodType($url, $body);
         }
         if (count(get_object_vars($response)) === 1) { // Response is wrapped with a rootNode?
             $unwrapped = current($response);
@@ -304,8 +327,13 @@ abstract class Client extends Object {
         return array();
     }
 
-    private function buildUrl($path) {
-        return 'https://' . $this->subdomain . '.socialcast.com/api/' . $path . '.json';
+    private function buildUrl($path, $parameters = array()) {
+        if (count($parameters) === 0) {
+            $suffix = '';
+        } else {
+            $suffix = '?' . http_build_query($parameters);
+        }
+        return 'https://' . $this->subdomain . '.socialcast.com/api/' . $path . '.json' . $suffix;
     }
 
     /**

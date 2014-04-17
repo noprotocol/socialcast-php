@@ -12,7 +12,7 @@ use Socialcast\Resource\User;
 class ClientTest extends PHPUnit_Framework_TestCase {
 
     /**
-     * @return Client
+     * @return \Socialcast\Client
      */
     function getClient() {
         return new BasicAuth('demo', 'emily@socialcast.com', 'demo');
@@ -35,7 +35,7 @@ class ClientTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals('Headquarters', $user->manager->custom_fields->business_unit);
     }
 
-    function testCollection() {
+    function testNestedCollection() {
         $data = (object) array('id' => 25);
         $user = new User($this->getClient(), $data);
         $messages = $user->getMessages();
@@ -43,4 +43,14 @@ class ClientTest extends PHPUnit_Framework_TestCase {
         $this->assertInstanceOf('Socialcast\Resource\Message', $messages[0]);
     }
 
+    function testCollectionParameters() {
+        $client = $this->getClient();
+        $users = $client->getUsers(array('ids' => '25,30'));
+        $this->assertCount(2, $users);
+    }
+
+    function testSearch() {
+        $results = $this->getClient()->searchUsers('Emily James');
+        $this->assertCount(1, $results);
+    }
 }

@@ -43,9 +43,11 @@ class ExtractDocs extends Object {
                         'name' => null,
                         'description' => (string) $tr->td[1],
                         'parameters' => array(),
+                        'has_filters' => false,
                         'returnType' => '\\Socialcast\\Resource',
                         'type' => $url[1],
                         'path' => $url[2],
+
                     );
                 }
             }
@@ -74,7 +76,7 @@ class ExtractDocs extends Object {
                         $pathParams['[0].id'] = $matches[2];
                     }
                 }
-            } elseif (strpos($method['path'], '/') === false) {
+            } elseif (strpos($method['path'], '/') === false) { // fetch all
                 if ($method['type'] === 'POST') {
                     $method['name'] = strtolower($method['type']) . Str::studly(Str::singular($method['path']));
                     $method['parameters'][] = '$' . Str::singular($resource);
@@ -82,12 +84,15 @@ class ExtractDocs extends Object {
                     $method['name'] = strtolower($method['type']) . Str::studly($method['path']);
                     if ($method['type'] === 'GET') {
                         $method['returnType'] = $class . '[]';
+                        $method['has_filters'] = true;
                     }
                 }
             } else {
-                if (Str::endsWith($method['path'], 'search')) {
-                    // @todo search
-                    continue;
+                if (Str::endsWith($method['path'], 'search') && $method['type'] === 'GET') {
+                    $method['returnType'] = $class.'[]';
+                    $method['name'] = 'search'.Str::studly($resource);
+                    $method['type'] = 'SEARCH';
+                    $method['has_filters'] = true;
                 } else {
 //                    warning('Unexpected method', $method);
                 }
@@ -98,8 +103,18 @@ class ExtractDocs extends Object {
                     $method['returnType'] = '\Socialcast\Resource\User';
                     break;
             }
-            $docComment .= "\n * @method " . $method['returnType'] . ' ' . $method['name'] . '(' . implode(', ', $method['parameters']) . ')  ' . $method['description'];
+            // build doccomment
+            if ($method['type'] === 'SEARCH') {
+                $docParams = array('$querystring');
+            } else {
+                $docParams = $method['parameters'];
+            }
+            if ($method['has_filters']) {
+                $docParams[] = '$parameters = array()';
+            }
+            $docComment .= "\n * @method " . $method['returnType'] . ' ' . $method['name'] . '('.implode(', ', $docParams). ')  ' . $method['description'];
 
+            // build mapping
             $mapping[$method['name']] = array(
                 'path' => $method['path'],
                 'class' => str_replace('[]', '', $method['returnType']),
