@@ -37,7 +37,7 @@ class User extends Resource {
     }
 
     public function getMessages() {
-        return $this->client->getList('users/'.$this->id.'/messages', 'Socialcast\Resource\Message');
+        return $this->fetchCollection('users/'.$this->id.'/messages', 'Socialcast\Resource\Message');
     }
 
 }

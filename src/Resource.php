@@ -80,4 +80,26 @@ class Resource {
 
     }
 
+    /**
+     *
+     * @param string $path
+     * @param string $class
+     * @return \Socialcast\Resource[]
+     * @throws Exception
+     */
+    protected function fetchCollection($path, $class) {
+        $response = $this->client->get($path);
+        if (is_object($response) && count(get_object_vars($response)) === 1) { // Response is wrapped with a rootNode?
+            $response = current($response); // unwrap
+        }
+        if (is_array($response) === false) {
+            throw new Exception('Response is not an array');
+        }
+        $collection = array();
+        foreach ($response as $item) {
+            $collection[] = new $class($this, $item);
+        }
+        return $collection;
+    }
+
 }
