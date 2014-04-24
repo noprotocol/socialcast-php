@@ -2,6 +2,9 @@
 	"name": "noprotocol/socialcast",
 	"description": "PHP Client for Socialcast’s REST API",
 	"keywords": ["socialcast"],
+	"autoload": {
+		"psr-4": { "Socialcast\\": "src/" }
+	},
 	"require": {
 		"sledgehammer/core": "*"
 	}
