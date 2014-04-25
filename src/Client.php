@@ -56,35 +56,75 @@ use Socialcast\Resource\User;
  */
 abstract class Client extends Object {
 
+    /**
+     * @var \Sledgehammer\Logger
+     */
+    public $logger;
+
     protected $subdomain;
+
 
     public function __construct($subdomain = 'api') {
         $this->subdomain = $subdomain;
+        $this->logger = new \Sledgehammer\Logger(array(
+            'identifier' => 'Socialcast',
+            'singular' => 'request',
+            'plural' => 'requests',
+        ));
     }
 
     /**
      * Perform a GET api call.
      * @param string $path Example: 'userinfo' or 'users/123/followers'
-     * @param array $params The GET parameters Example: ['q' => 'test'] add `?q=test` to the url.
+     * @param array $parameters The GET parameters Example: ['q' => 'test'] add `?q=test` to the url.
      */
-    public function get($path, $params = array()) {
-        $request = Curl::get($this->buildUrl($path, $params), $this->curlOptions());
-        return $this->processRequest($request);
+    public function get($path, $parameters = array()) {
+        return $this->api('GET', $path, $parameters);
     }
 
     public function post($path, $data) {
-        $request = Curl::post($this->buildUrl($path), $data, $this->curlOptions());
-        return $this->processRequest($request);
+        return $this->api('POST', $path, array(), $data);
     }
 
     public function put($path, $data) {
-        $request = Curl::put($this->buildUrl($path), $data, $this->curlOptions());
-        return $this->processRequest($request);
+        return $this->api('PUT', $path, array(), $data);
     }
 
     public function delete($path) {
-        $request = Curl::delete($this->buildUrl($path), $this->curlOptions());
-        return $this->processRequest($request);
+        return $this->api('DELETE', $path);
+    }
+
+    /**
+     *
+     * @param string $method HTTP method: GET,POST,PUT or DELETE
+     * @param string $path
+     * @param array $parameters GET parameters
+     * @param mixed $data POST/PUT data
+     * @return stdClass
+     */
+    public function api($method, $path, $parameters = array(), $data = null) {
+        $start = microtime(true);
+        $options = $this->curlOptions() + Curl::$defaults;
+        $options[CURLOPT_URL] = $this->buildUrl($path, $parameters);
+        switch ($method) {
+            case 'GET':
+                break;
+            case 'POST':
+                $options[CURLOPT_POST] = true;
+                break;
+            case 'PUT':
+                $options[CURLOPT_CUSTOMREQUEST] = 'PUT';
+                break;
+            case 'DELETE':
+                $options[CURLOPT_CUSTOMREQUEST] = 'DELETE';
+                break;
+        }
+        if ($data !== null) {
+        	$options[CURLOPT_POSTFIELDS] = $data;
+        }
+        $response = $this->processRequest(new Curl($options));
+        $this->logger->append($method.' '.$path, array('duration' => microtime(true) - $start));
+        return $response;
     }
 
     public function __call($method, $arguments) {
