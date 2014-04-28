@@ -4,10 +4,13 @@ namespace Socialcast;
 
 use Sledgehammer\Curl;
 use Sledgehammer\Framework;
+use Sledgehammer\Html;
 use Sledgehammer\InfoException;
 use Sledgehammer\Json;
+use Sledgehammer\Logger;
 use Sledgehammer\Object;
 use Sledgehammer\PropertyPath;
+use Socialcast\Auth\AbstractAuth;
 use Socialcast\Resource\Badge;
 use Socialcast\Resource\Category;
 use Socialcast\Resource\ContentFilter;
@@ -16,8 +19,10 @@ use Socialcast\Resource\Group;
 use Socialcast\Resource\GroupMembership;
 use Socialcast\Resource\Message;
 use Socialcast\Resource\Poll;
+use Socialcast\Resource\Resource;
 use Socialcast\Resource\Stream;
 use Socialcast\Resource\User;
+use stdClass;
 
 /**
  * @link http://developers.socialcast.com/api-documentation/
@@ -54,23 +59,35 @@ use Socialcast\Resource\User;
  * @method Badge[] getBadges($parameters = array())  Get list of Thanks Badges
  * @method Badge getBadge($badgeId)  Get a specific badge
  */
-abstract class Client extends Object {
+class Client extends Object {
 
     /**
-     * @var \Sledgehammer\Logger
+     * @var Logger
      */
     public $logger;
 
-    protected $subdomain;
+    /**
+     * @var AbstractAuth
+     */
+    protected $auth;
 
-
-    public function __construct($subdomain = 'api') {
-        $this->subdomain = $subdomain;
-        $this->logger = new \Sledgehammer\Logger(array(
-            'identifier' => 'Socialcast',
-            'singular' => 'request',
-            'plural' => 'requests',
-        ));
+    /**
+     *
+     * @param AbstractAuth $auth
+     * @param Logger $logger
+     */
+    public function __construct($auth, $logger = null) {
+        $this->auth = $auth;
+        $this->logger = $logger;
+        if ($logger === null) {
+            $this->logger = new Logger(array(
+                'identifier' => 'Socialcast',
+                'singular' => 'request',
+                'plural' => 'requests',
+                'renderer' => array($this, 'renderEntry'),
+                'columns' => array('Method', 'Path', 'Size', 'Duration')
+            ));
+        }
     }
 
     /**
@@ -95,6 +112,7 @@ abstract class Client extends Object {
     }
 
     /**
+     * Perform an API call.
      *
      * @param string $method HTTP method: GET,POST,PUT or DELETE
      * @param string $path
@@ -104,27 +122,47 @@ abstract class Client extends Object {
      */
     public function api($method, $path, $parameters = array(), $data = null) {
         $start = microtime(true);
-        $options = $this->curlOptions() + Curl::$defaults;
-        $options[CURLOPT_URL] = $this->buildUrl($path, $parameters);
+        $request = Curl::$defaults;
+        $request[CURLOPT_URL] = $this->buildUrl($path, $parameters);
         switch ($method) {
             case 'GET':
                 break;
             case 'POST':
-                $options[CURLOPT_POST] = true;
+                $request[CURLOPT_POST] = true;
                 break;
             case 'PUT':
-                $options[CURLOPT_CUSTOMREQUEST] = 'PUT';
+                $request[CURLOPT_CUSTOMREQUEST] = 'PUT';
                 break;
             case 'DELETE':
-                $options[CURLOPT_CUSTOMREQUEST] = 'DELETE';
+                $request[CURLOPT_CUSTOMREQUEST] = 'DELETE';
                 break;
         }
         if ($data !== null) {
-        	$options[CURLOPT_POSTFIELDS] = $data;
+            $request[CURLOPT_POSTFIELDS] = $data;
         }
-        $response = $this->processRequest(new Curl($options));
-        $this->logger->append($method.' '.$path, array('duration' => microtime(true) - $start));
-        return $response;
+        $request = $this->auth->sign($request);
+        $response = new Curl($request);
+        try {
+            $responseBody = $response->getBody();
+            if ($response->http_code < 400) {
+                return Json::decode($responseBody);
+            }
+            if ($response->http_code == 401) {
+                throw new Exception('Invalid credentials');
+            }
+            $message = @Framework::$statusCodes[$response->http_code];
+            throw new Exception('Socialcast error: ' . $response->http_code . ' ' . $message);
+        } catch (Exception $e) {
+            throw $e;
+        } finally {
+            $this->logger->append($path, array(
+                'duration' => microtime(true) - $start,
+                'url' => $request[CURLOPT_URL],
+                'method' => $method,
+                'response' => array(
+                    'length' => strlen($responseBody)
+            )));
+        }
     }
 
     public function __call($method, $arguments) {
@@ -373,21 +411,22 @@ abstract class Client extends Object {
         } else {
             $suffix = '?' . http_build_query($parameters);
         }
-        return 'https://' . $this->subdomain . '.socialcast.com/api/' . $path . '.json' . $suffix;
+        return 'https://' . $this->auth->subdomain . '.socialcast.com/api/' . $path . '.json' . $suffix;
     }
 
-    /**
-     * @param Curl $request
-     */
-    private function processRequest($request) {
-        if ($request->http_code < 400) {
-            return Json::decode($request->getBody());
+    function renderEntry($entry, $meta) {
+        echo '<td>', $meta['method'], '</td>';
+        echo '<td>', Html::element('a', array('href' => $meta['url'], 'target' => '_blank'), $entry), '</td>';
+        echo '<td class="logentry-number >', number_format($meta['response']['length'] / 1024, 2), 'KiB</td>';
+        $duration = $meta['duration'];
+        if ($duration > 3) {
+            $color = 'logentry-alert';
+        } elseif ($duration > 2) {
+            $color = 'logentry-warning';
+        } else {
+            $color = 'logentry-debug';
         }
-        if ($request->http_code == 401) {
-            throw new Exception('Invalid credentials');
-        }
-        $message = @Framework::$statusCodes[$request->http_code];
-        throw new Exception('Socialcast error: ' . $request->http_code . ' ' . $message);
+        echo '<td class="logentry-number ', $color, '"><b>', \Sledgehammer\format_parsetime($duration), '</b>&nbsp;sec</td>';
     }
 
 }

@@ -1,15 +1,13 @@
 <?php
 
-namespace Socialcast\Client;
-
-use Socialcast\Client;
+namespace Socialcast\Auth;
 
 /**
  * Socialcast Client using HTTP Basic Authentication.
  *
  * @link http://developers.socialcast.com/api-documentation/http-basic-authentication/
  */
-class BasicAuth extends Client {
+class BasicAuth extends AbstractAuth {
 
     /**
      * @var string
@@ -28,15 +26,14 @@ class BasicAuth extends Client {
      * @param string $password
      */
     public function __construct($subdomain = 'api', $username = null, $password = null) {
+        parent::__construct($subdomain);
         $this->username = $username;
         $this->password = $password;
-        parent::__construct($subdomain);
     }
 
-    protected function curlOptions() {
-        return array(
-            CURLOPT_USERPWD => $this->username . ':' . $this->password
-        );
+    public function sign($request) {
+        $request[CURLOPT_USERPWD] = $this->username . ':' . $this->password;
+        return $request;
     }
 
 }

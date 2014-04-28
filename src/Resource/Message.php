@@ -2,8 +2,6 @@
 
 namespace Socialcast\Resource;
 
-use Socialcast\Resource;
-
 /**
  * Individual message in the stream.
  *

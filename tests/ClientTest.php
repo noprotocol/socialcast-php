@@ -3,7 +3,7 @@
 namespace Socialcast;
 
 use PHPUnit_Framework_TestCase;
-use Socialcast\Client\BasicAuth;
+use Socialcast\Auth\BasicAuth;
 use Socialcast\Resource\User;
 
 /**
@@ -12,10 +12,10 @@ use Socialcast\Resource\User;
 class ClientTest extends PHPUnit_Framework_TestCase {
 
     /**
-     * @return \Socialcast\Client
+     * @return Client
      */
     function getClient() {
-        return new BasicAuth('demo', 'emily@socialcast.com', 'demo');
+        return new Client(new BasicAuth('demo', 'emily@socialcast.com', 'demo'));
     }
 
     function testUserinfo() {

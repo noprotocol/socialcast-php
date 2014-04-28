@@ -1,6 +1,6 @@
 <?php
 
-namespace Socialcast;
+namespace Socialcast\Resource;
 
 class Resource {
 

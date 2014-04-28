@@ -3,7 +3,6 @@
 namespace Socialcast\Resource;
 
 use Socialcast\CustomFields;
-use Socialcast\Resource;
 
 /**
  * User profile information.
