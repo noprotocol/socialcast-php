@@ -39,4 +39,18 @@ namespace Socialcast\Resource;
  */
 class Message extends Resource {
 
+    public function like() {
+        return $this->client->post('messages/'.$this->id.'/likes', array());
+    }
+
+    public function unlike() {
+        foreach ($this->likes as $like) {
+            if ($like->unlikable) {
+                $this->client->delete('messages/'.$this->id.'/likes/'.$like->id);
+                return true;
+            }
+        }
+        return false;
+    }
+
 }

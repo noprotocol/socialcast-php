@@ -23,6 +23,7 @@ use Socialcast\Resource\Resource;
 use Socialcast\Resource\Stream;
 use Socialcast\Resource\User;
 use stdClass;
+use Exception;
 
 /**
  * @link http://developers.socialcast.com/api-documentation/
