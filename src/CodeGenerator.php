@@ -61,7 +61,7 @@ class CodeGenerator {
             if (preg_match('/^(.+)\/([^\/]+_ID)$/', $method['path'], $matches)) { // fetch one
                 $method['name'] = strtolower($method['type']) . ucfirst(Str::singular($matches[1]));
                 if (in_array($method['type'], array('GET', 'DELETE'))) {
-                    $method['parameters'][$matches[2]] = '$' . Str::camel(strtolower($matches[2]));
+                    $method['parameters'][$matches[2]] = '$id';// . Str::camel(strtolower($matches[2]));
                     if ($method['type'] === 'GET') {
                         $method['returnType'] = $class;
                     }
@@ -142,7 +142,12 @@ class CodeGenerator {
             $code .= "\n\t\t// ** GENERATED CODE **";
             if ($method['type'] === 'GET') {
                 if ($class === $method['returnType']) { // Single return
-                    $code .= "\n\t\treturn new ".$class."(\$this, false, ".$path.$pathParameters.");";
+                    if (count($method['parameters']) === 1) {
+                        $resource = "(object) array('id' => \$id)";
+                    } else {
+                        $resource = 'false';
+                    }
+                    $code .= "\n\t\treturn new ".$class."(\$this, ".$resource.", ".$path.$pathParameters.");";
                 } else { // Collection
                     $code .= "\n\t\treturn ".$class."::all(\$this, ".$path.$pathParameters.");";
                 }

@@ -206,12 +206,12 @@ class Client extends Object {
     /**
      * View User Profile
      *
-     * @param int $userId
+     * @param int $id
      * @return \Socialcast\Resource\User
      */
-    public function getUser($userId) {
+    public function getUser($id) {
         // ** GENERATED CODE **
-        return new \Socialcast\Resource\User($this, false, 'users/'.$userId);
+        return new \Socialcast\Resource\User($this, (object) array('id' => $id), 'users/'.$id);
     }
 
     /**
@@ -241,11 +241,11 @@ class Client extends Object {
     /**
      * Deactivate a User
      *
-     * @param int $userId
+     * @param int $id
      */
-    public function deleteUser($userId) {
+    public function deleteUser($id) {
         // ** GENERATED CODE **
-        $this->delete('users/'.$userId);
+        $this->delete('users/'.$id);
     }
 
     /**
@@ -273,12 +273,12 @@ class Client extends Object {
     /**
      * Show a Single Group
      *
-     * @param int $groupId
+     * @param int $id
      * @return \Socialcast\Resource\Group
      */
-    public function getGroup($groupId) {
+    public function getGroup($id) {
         // ** GENERATED CODE **
-        return new \Socialcast\Resource\Group($this, false, 'groups/'.$groupId);
+        return new \Socialcast\Resource\Group($this, (object) array('id' => $id), 'groups/'.$id);
     }
 
     /**
@@ -296,11 +296,11 @@ class Client extends Object {
     /**
      * Destroy an Archived Message
      *
-     * @param int $groupId
+     * @param int $id
      */
-    public function deleteGroup($groupId) {
+    public function deleteGroup($id) {
         // ** GENERATED CODE **
-        $this->delete('groups/'.$groupId);
+        $this->delete('groups/'.$id);
     }
 
     /**
@@ -317,12 +317,12 @@ class Client extends Object {
     /**
      * Read a Single Stream Message
      *
-     * @param int $messageId
+     * @param int $id
      * @return \Socialcast\Resource\Message
      */
-    public function getMessage($messageId) {
+    public function getMessage($id) {
         // ** GENERATED CODE **
-        return new \Socialcast\Resource\Message($this, false, 'messages/'.$messageId);
+        return new \Socialcast\Resource\Message($this, (object) array('id' => $id), 'messages/'.$id);
     }
 
     /**
@@ -353,11 +353,11 @@ class Client extends Object {
     /**
      * Destroy an existing message
      *
-     * @param int $messageId
+     * @param int $id
      */
-    public function deleteMessage($messageId) {
+    public function deleteMessage($id) {
         // ** GENERATED CODE **
-        $this->delete('messages/'.$messageId);
+        $this->delete('messages/'.$id);
     }
 
     /**
@@ -374,12 +374,12 @@ class Client extends Object {
     /**
      * Returns information of the referenced conversation
      *
-     * @param int $conversationId
+     * @param int $id
      * @return \Socialcast\Resource\Conversation
      */
-    public function getConversation($conversationId) {
+    public function getConversation($id) {
         // ** GENERATED CODE **
-        return new \Socialcast\Resource\Conversation($this, false, 'conversations/'.$conversationId);
+        return new \Socialcast\Resource\Conversation($this, (object) array('id' => $id), 'conversations/'.$id);
     }
 
     /**
@@ -430,12 +430,12 @@ class Client extends Object {
     /**
      * View Poll Data
      *
-     * @param int $pollId
+     * @param int $id
      * @return \Socialcast\Resource\Poll
      */
-    public function getPoll($pollId) {
+    public function getPoll($id) {
         // ** GENERATED CODE **
-        return new \Socialcast\Resource\Poll($this, false, 'polls/'.$pollId);
+        return new \Socialcast\Resource\Poll($this, (object) array('id' => $id), 'polls/'.$id);
     }
 
     /**
@@ -476,12 +476,11 @@ class Client extends Object {
     /**
      * Get a specific badge
      *
-     * @param int $badgeId
+     * @param int $id
      * @return \Socialcast\Resource\Badge
      */
-    public function getBadge($badgeId) {
+    public function getBadge($id) {
         // ** GENERATED CODE **
-        return new \Socialcast\Resource\Badge($this, false, 'badges/'.$badgeId);
+        return new \Socialcast\Resource\Badge($this, (object) array('id' => $id), 'badges/'.$id);
     }
-
 }
