@@ -27,37 +27,6 @@ use stdClass;
 /**
  * @link http://developers.socialcast.com/api-documentation/
  *
- * @method Resource postAttachment($attachment)  Create an Attachment
- * @method User getUserinfo($parameters = array())  View Authenticated User Profile
- * @method User getUser($userId)  View User Profile
- * @method User[] searchUsers($querystring, $parameters = array())  Search Users in Your Company
- * @method User[] getUsers($parameters = array())  List Users in Your Company
- * @method Resource putUser($user)  Update User Profile
- * @method Resource deleteUser($userId)  Deactivate a User
- * @method GroupMembership[] getGroupMemberships($parameters = array())  Listing Group Memberships
- * @method Group[] getGroups($parameters = array())  Listing All Groups
- * @method Group getGroup($groupId)  Show a Single Group
- * @method Resource postGroup($group)  Create a Group
- * @method Resource putGroup($group)  Updating Existing Group
- * @method Resource deleteGroup($groupId)  Destroy an Archived Message
- * @method Message[] getMessages($parameters = array())  Reading Stream Messages
- * @method Message getMessage($messageId)  Read a Single Stream Message
- * @method Message[] searchMessages($querystring, $parameters = array())  Searching Messages
- * @method Resource postMessage($message)  Creating New Messages
- * @method Resource putMessage($message)  Updating Existing Messages
- * @method Resource deleteMessage($messageId)  Destroy an existing message
- * @method ContentFilter[] getContentFilters($parameters = array())  Listing Tenant Content Filters
- * @method Conversation getConversation($conversationId)  Returns information of the referenced conversation
- * @method Conversation[] getConversations($parameters = array())  List all conversations that a user has access to
- * @method Resource postConversation($conversation)  Create a new conversation
- * @method Resource ()  Acknowledge that a user has read the latest remarks in all of their conversations. This will clear the unread flag on all of their conversations.
- * @method Category[] getCategories($parameters = array())  Listing Tenant Categories
- * @method Stream[] getStreams($parameters = array())  Listing User’s Streams
- * @method Poll getPoll($pollId)  View Poll Data
- * @method Resource postPoll($poll)  Create a poll
- * @method Resource postThank($thank)  Create Thanks
- * @method Badge[] getBadges($parameters = array())  Get list of Thanks Badges
- * @method Badge getBadge($badgeId)  Get a specific badge
  */
 class Client extends Object {
 
@@ -124,6 +93,7 @@ class Client extends Object {
         $start = microtime(true);
         $request = Curl::$defaults;
         $request[CURLOPT_URL] = $this->buildUrl($path, $parameters);
+        $request[CURLOPT_FAILONERROR] = false;
         switch ($method) {
             case 'GET':
                 break;
@@ -139,6 +109,12 @@ class Client extends Object {
         }
         if ($data !== null) {
             $request[CURLOPT_POSTFIELDS] = $data;
+            foreach ($data as $value) {
+                if (is_array($value)) {
+                    $request[CURLOPT_POSTFIELDS] = http_build_query($data);
+                    break;
+                }
+            }
         }
         $request = $this->auth->sign($request);
         $response = new Curl($request);
@@ -148,10 +124,10 @@ class Client extends Object {
                 return Json::decode($responseBody);
             }
             if ($response->http_code == 401) {
-                throw new Exception('Invalid credentials');
+                throw new Exception('[Socialcast] Invalid credentials, 401 '.Framework::$statusCodes[401]);
             }
             $message = @Framework::$statusCodes[$response->http_code];
-            throw new Exception('Socialcast error: ' . $response->http_code . ' ' . $message);
+            throw new Exception('[Socialcast] ' . $response->http_code . ' ' . $message);
         } catch (Exception $e) {
             throw $e;
         } finally {
@@ -160,241 +136,9 @@ class Client extends Object {
                 'url' => $request[CURLOPT_URL],
                 'method' => $method,
                 'response' => array(
-                    'length' => strlen($responseBody)
+                    'length' => isset($responseBody) ? strlen($responseBody) : ''
             )));
         }
-    }
-
-    public function __call($method, $arguments) {
-        $mapping = array(
-            'postAttachment' => array(
-                'path' => 'attachment',
-                'class' => '\Socialcast\Resource',
-                'arguments' => array(),
-            ),
-            'getUserinfo' => array(
-                'path' => 'userinfo',
-                'class' => '\Socialcast\Resource\User',
-                'arguments' => array(),
-            ),
-            'getUser' => array(
-                'path' => 'users/USER_ID',
-                'class' => '\Socialcast\Resource\User',
-                'arguments' => array(
-                    '[0]' => 'USER_ID',
-                ),
-            ),
-            'searchUsers' => array(
-                'path' => 'users/search',
-                'class' => '\Socialcast\Resource\User',
-                'arguments' => array(),
-            ),
-            'getUsers' => array(
-                'path' => 'users',
-                'class' => '\Socialcast\Resource\User',
-                'arguments' => array(),
-            ),
-            'putUser' => array(
-                'path' => 'users/USER_ID',
-                'class' => '\Socialcast\Resource',
-                'arguments' => array(
-                    '[0].id' => 'USER_ID',
-                ),
-            ),
-            'deleteUser' => array(
-                'path' => 'users/USER_ID',
-                'class' => '\Socialcast\Resource',
-                'arguments' => array(
-                    '[0]' => 'USER_ID',
-                ),
-            ),
-            'getGroupMemberships' => array(
-                'path' => 'group_memberships',
-                'class' => '\Socialcast\Resource\GroupMembership',
-                'arguments' => array(),
-            ),
-            'getGroups' => array(
-                'path' => 'groups',
-                'class' => '\Socialcast\Resource\Group',
-                'arguments' => array(),
-            ),
-            'getGroup' => array(
-                'path' => 'groups/GROUP_ID',
-                'class' => '\Socialcast\Resource\Group',
-                'arguments' => array(
-                    '[0]' => 'GROUP_ID',
-                ),
-            ),
-            'postGroup' => array(
-                'path' => 'groups',
-                'class' => '\Socialcast\Resource',
-                'arguments' => array(),
-            ),
-            'putGroup' => array(
-                'path' => 'groups/GROUP_ID',
-                'class' => '\Socialcast\Resource',
-                'arguments' => array(
-                    '[0].id' => 'GROUP_ID',
-                ),
-            ),
-            'deleteGroup' => array(
-                'path' => 'groups/GROUP_ID',
-                'class' => '\Socialcast\Resource',
-                'arguments' => array(
-                    '[0]' => 'GROUP_ID',
-                ),
-            ),
-            'getMessages' => array(
-                'path' => 'messages',
-                'class' => '\Socialcast\Resource\Message',
-                'arguments' => array(),
-            ),
-            'getMessage' => array(
-                'path' => 'messages/MESSAGE_ID',
-                'class' => '\Socialcast\Resource\Message',
-                'arguments' => array(
-                    '[0]' => 'MESSAGE_ID',
-                ),
-            ),
-            'searchMessages' => array(
-                'path' => 'messages/search',
-                'class' => '\Socialcast\Resource\Message',
-                'arguments' => array(),
-            ),
-            'postMessage' => array(
-                'path' => 'messages',
-                'class' => '\Socialcast\Resource',
-                'arguments' => array(),
-            ),
-            'putMessage' => array(
-                'path' => 'messages/MESSAGE_ID',
-                'class' => '\Socialcast\Resource',
-                'arguments' => array(
-                    '[0].id' => 'MESSAGE_ID',
-                ),
-            ),
-            'deleteMessage' => array(
-                'path' => 'messages/MESSAGE_ID',
-                'class' => '\Socialcast\Resource',
-                'arguments' => array(
-                    '[0]' => 'MESSAGE_ID',
-                ),
-            ),
-            'getContentFilters' => array(
-                'path' => 'content_filters',
-                'class' => '\Socialcast\Resource\ContentFilter',
-                'arguments' => array(),
-            ),
-            'getConversation' => array(
-                'path' => 'conversations/CONVERSATION_ID',
-                'class' => '\Socialcast\Resource\Conversation',
-                'arguments' => array(
-                    '[0]' => 'CONVERSATION_ID',
-                ),
-            ),
-            'getConversations' => array(
-                'path' => 'conversations',
-                'class' => '\Socialcast\Resource\Conversation',
-                'arguments' => array(),
-            ),
-            'postConversation' => array(
-                'path' => 'conversations',
-                'class' => '\Socialcast\Resource',
-                'arguments' => array(),
-            ),
-            '' => array(
-                'path' => 'conversations/acknowledge_all',
-                'class' => '\Socialcast\Resource',
-                'arguments' => array(),
-            ),
-            'getCategories' => array(
-                'path' => 'categories',
-                'class' => '\Socialcast\Resource\Category',
-                'arguments' => array(),
-            ),
-            'getStreams' => array(
-                'path' => 'streams',
-                'class' => '\Socialcast\Resource\Stream',
-                'arguments' => array(),
-            ),
-            'getPoll' => array(
-                'path' => 'polls/POLL_ID',
-                'class' => '\Socialcast\Resource\Poll',
-                'arguments' => array(
-                    '[0]' => 'POLL_ID',
-                ),
-            ),
-            'postPoll' => array(
-                'path' => 'polls',
-                'class' => '\Socialcast\Resource',
-                'arguments' => array(),
-            ),
-            'postThank' => array(
-                'path' => 'thanks',
-                'class' => '\Socialcast\Resource',
-                'arguments' => array(),
-            ),
-            'getBadges' => array(
-                'path' => 'badges',
-                'class' => '\Socialcast\Resource\Badge',
-                'arguments' => array(),
-            ),
-            'getBadge' => array(
-                'path' => 'badges/BADGE_ID',
-                'class' => '\Socialcast\Resource\Badge',
-                'arguments' => array(
-                    '[0]' => 'BADGE_ID',
-                ),
-            ),
-        );
-        if (array_key_exists($method, $mapping) === false) {
-            throw new InfoException('Method: "' . $method . '" doesn\'t exist in a "' . get_class($this) . '" object.', array('Available methods' => array_merge(array_keys($mapping), \Sledgehammer\get_public_methods($this))));
-        }
-        $config = $mapping[$method];
-        $url = $config['path'];
-        $body = '';
-        foreach ($config['arguments'] as $path => $target) {
-            $value = PropertyPath::get($path, $arguments);
-            if ($target === '__HTTP_REQUEST_BODY__') {
-                $body = $value;
-            } else {
-                $url = str_replace($target, $value, $url); // Replace USER_ID in the url with the $userId param
-            }
-        }
-        preg_match('/^(get|post|put|delete|search)/', $method, $match);
-        $methodType = $match[1];
-        if ($methodType === 'search') {
-            $params = count($arguments) === 1 ? array() : $arguments[1];
-            $params['q'] = $arguments[0];
-            $response = $this->get($url, $params);
-        } elseif ($methodType === 'get') {
-            $params = array();
-            if (count($arguments) > count($config['arguments'])) {
-                $params = $arguments[count($config['arguments'])];
-            }
-            $response = $this->get($url, $params);
-        } elseif ($methodType === 'delete') {
-            $response = $this->delete($url);
-        } else { // post or put
-            $response = $this->$methodType($url, $body);
-        }
-        if (count(get_object_vars($response)) === 1) { // Response is wrapped with a rootNode?
-            $unwrapped = current($response);
-            if (is_scalar($unwrapped) === false) {
-                $response = $unwrapped;
-            }
-        }
-        $class = $config['class'];
-        // Single resource
-        if (is_object($response)) {
-            return new $class($this, $response);
-        }
-        // A resource list
-        $list = array();
-        foreach ($response as $item) {
-            $list[] = new $class($this, $item);
-        }
-        return $list;
     }
 
     /**
@@ -417,7 +161,7 @@ class Client extends Object {
     function renderEntry($entry, $meta) {
         echo '<td>', $meta['method'], '</td>';
         echo '<td>', Html::element('a', array('href' => $meta['url'], 'target' => '_blank'), $entry), '</td>';
-        echo '<td class="logentry-number >', number_format($meta['response']['length'] / 1024, 2), 'KiB</td>';
+        echo '<td class="logentry-number">', number_format($meta['response']['length'] / 1024, 2), 'KiB</td>';
         $duration = $meta['duration'];
         if ($duration > 3) {
             $color = 'logentry-alert';
@@ -427,6 +171,317 @@ class Client extends Object {
             $color = 'logentry-debug';
         }
         echo '<td class="logentry-number ', $color, '"><b>', \Sledgehammer\format_parsetime($duration), '</b>&nbsp;sec</td>';
+    }
+
+    //*****************************************
+    //
+    //          GENERATED METHODS
+    //
+    // Update code using CodeGenerator::run();
+    //*****************************************
+
+    /**
+     * Create an Attachment
+     *
+     * @param array $attachment
+     * @return \Socialcast\Resource
+     */
+    public function postAttachment($attachment) {
+        // ** GENERATED CODE **
+        $response = $this->post('attachment', $attachment);
+        return new \Socialcast\Resource\Attachment($this, $response);
+    }
+
+    /**
+     * View Authenticated User Profile
+     *
+     * @param array [$parameter]  Request parameters
+     * @return \Socialcast\Resource\User
+     */
+    public function getUserinfo($parameters = array()) {
+        // ** GENERATED CODE **
+        return new \Socialcast\Resource\User($this, false, 'userinfo', $parameters);
+    }
+
+    /**
+     * View User Profile
+     *
+     * @param int $userId
+     * @return \Socialcast\Resource\User
+     */
+    public function getUser($userId) {
+        // ** GENERATED CODE **
+        return new \Socialcast\Resource\User($this, false, 'users/'.$userId);
+    }
+
+    /**
+     * Search Users in Your Company
+     *
+     * @param string $querystring  Search query string
+     * @param array [$parameter]  Request parameters
+     * @return \Socialcast\Resource\User[]
+     */
+    public function searchUsers($querystring, $parameters = array()) {
+        // ** GENERATED CODE **
+        $parameters['q'] = $querystring;
+        return \Socialcast\Resource\User::all($this, 'users/search', $parameters);
+    }
+
+    /**
+     * List Users in Your Company
+     *
+     * @param array [$parameter]  Request parameters
+     * @return \Socialcast\Resource\User[]
+     */
+    public function getUsers($parameters = array()) {
+        // ** GENERATED CODE **
+        return \Socialcast\Resource\User::all($this, 'users', $parameters);
+    }
+
+    /**
+     * Deactivate a User
+     *
+     * @param int $userId
+     */
+    public function deleteUser($userId) {
+        // ** GENERATED CODE **
+        $this->delete('users/'.$userId);
+    }
+
+    /**
+     * Listing Group Memberships
+     *
+     * @param array [$parameter]  Request parameters
+     * @return \Socialcast\Resource\GroupMembership[]
+     */
+    public function getGroupMemberships($parameters = array()) {
+        // ** GENERATED CODE **
+        return \Socialcast\Resource\GroupMembership::all($this, 'group_memberships', $parameters);
+    }
+
+    /**
+     * Listing All Groups
+     *
+     * @param array [$parameter]  Request parameters
+     * @return \Socialcast\Resource\Group[]
+     */
+    public function getGroups($parameters = array()) {
+        // ** GENERATED CODE **
+        return \Socialcast\Resource\Group::all($this, 'groups', $parameters);
+    }
+
+    /**
+     * Show a Single Group
+     *
+     * @param int $groupId
+     * @return \Socialcast\Resource\Group
+     */
+    public function getGroup($groupId) {
+        // ** GENERATED CODE **
+        return new \Socialcast\Resource\Group($this, false, 'groups/'.$groupId);
+    }
+
+    /**
+     * Create a Group
+     *
+     * @param array $group
+     * @return \Socialcast\Resource
+     */
+    public function postGroup($group) {
+        // ** GENERATED CODE **
+        $response = $this->post('groups', $group);
+        return new \Socialcast\Resource\Group($this, $response);
+    }
+
+    /**
+     * Destroy an Archived Message
+     *
+     * @param int $groupId
+     */
+    public function deleteGroup($groupId) {
+        // ** GENERATED CODE **
+        $this->delete('groups/'.$groupId);
+    }
+
+    /**
+     * Reading Stream Messages
+     *
+     * @param array [$parameter]  Request parameters
+     * @return \Socialcast\Resource\Message[]
+     */
+    public function getMessages($parameters = array()) {
+        // ** GENERATED CODE **
+        return \Socialcast\Resource\Message::all($this, 'messages', $parameters);
+    }
+
+    /**
+     * Read a Single Stream Message
+     *
+     * @param int $messageId
+     * @return \Socialcast\Resource\Message
+     */
+    public function getMessage($messageId) {
+        // ** GENERATED CODE **
+        return new \Socialcast\Resource\Message($this, false, 'messages/'.$messageId);
+    }
+
+    /**
+     * Searching Messages
+     *
+     * @param string $querystring  Search query string
+     * @param array [$parameter]  Request parameters
+     * @return \Socialcast\Resource\Message[]
+     */
+    public function searchMessages($querystring, $parameters = array()) {
+        // ** GENERATED CODE **
+        $parameters['q'] = $querystring;
+        return \Socialcast\Resource\Message::all($this, 'messages/search', $parameters);
+    }
+
+    /**
+     * Creating New Messages
+     *
+     * @param array $message
+     * @return \Socialcast\Resource
+     */
+    public function postMessage($message) {
+        // ** GENERATED CODE **
+        $response = $this->post('messages', array('message' => $message));
+        return new \Socialcast\Resource\Message($this, $response);
+    }
+
+    /**
+     * Destroy an existing message
+     *
+     * @param int $messageId
+     */
+    public function deleteMessage($messageId) {
+        // ** GENERATED CODE **
+        $this->delete('messages/'.$messageId);
+    }
+
+    /**
+     * Listing Tenant Content Filters
+     *
+     * @param array [$parameter]  Request parameters
+     * @return \Socialcast\Resource\ContentFilter[]
+     */
+    public function getContentFilters($parameters = array()) {
+        // ** GENERATED CODE **
+        return \Socialcast\Resource\ContentFilter::all($this, 'content_filters', $parameters);
+    }
+
+    /**
+     * Returns information of the referenced conversation
+     *
+     * @param int $conversationId
+     * @return \Socialcast\Resource\Conversation
+     */
+    public function getConversation($conversationId) {
+        // ** GENERATED CODE **
+        return new \Socialcast\Resource\Conversation($this, false, 'conversations/'.$conversationId);
+    }
+
+    /**
+     * List all conversations that a user has access to
+     *
+     * @param array [$parameter]  Request parameters
+     * @return \Socialcast\Resource\Conversation[]
+     */
+    public function getConversations($parameters = array()) {
+        // ** GENERATED CODE **
+        return \Socialcast\Resource\Conversation::all($this, 'conversations', $parameters);
+    }
+
+    /**
+     * Create a new conversation
+     *
+     * @param array $conversation
+     * @return \Socialcast\Resource
+     */
+    public function postConversation($conversation) {
+        // ** GENERATED CODE **
+        $response = $this->post('conversations', $conversation);
+        return new \Socialcast\Resource\Conversation($this, $response);
+    }
+
+    /**
+     * Listing Tenant Categories
+     *
+     * @param array [$parameter]  Request parameters
+     * @return \Socialcast\Resource\Category[]
+     */
+    public function getCategories($parameters = array()) {
+        // ** GENERATED CODE **
+        return \Socialcast\Resource\Category::all($this, 'categories', $parameters);
+    }
+
+    /**
+     * Listing User’s Streams
+     *
+     * @param array [$parameter]  Request parameters
+     * @return \Socialcast\Resource\Stream[]
+     */
+    public function getStreams($parameters = array()) {
+        // ** GENERATED CODE **
+        return \Socialcast\Resource\Stream::all($this, 'streams', $parameters);
+    }
+
+    /**
+     * View Poll Data
+     *
+     * @param int $pollId
+     * @return \Socialcast\Resource\Poll
+     */
+    public function getPoll($pollId) {
+        // ** GENERATED CODE **
+        return new \Socialcast\Resource\Poll($this, false, 'polls/'.$pollId);
+    }
+
+    /**
+     * Create a poll
+     *
+     * @param array $poll
+     * @return \Socialcast\Resource
+     */
+    public function postPoll($poll) {
+        // ** GENERATED CODE **
+        $response = $this->post('polls', $poll);
+        return new \Socialcast\Resource\Poll($this, $response);
+    }
+
+    /**
+     * Create Thanks
+     *
+     * @param array $thank
+     * @return \Socialcast\Resource
+     */
+    public function postThank($thank) {
+        // ** GENERATED CODE **
+        $response = $this->post('thanks', $thank);
+        return new \Socialcast\Resource\Thank($this, $response);
+    }
+
+    /**
+     * Get list of Thanks Badges
+     *
+     * @param array [$parameter]  Request parameters
+     * @return \Socialcast\Resource\Badge[]
+     */
+    public function getBadges($parameters = array()) {
+        // ** GENERATED CODE **
+        return \Socialcast\Resource\Badge::all($this, 'badges', $parameters);
+    }
+
+    /**
+     * Get a specific badge
+     *
+     * @param int $badgeId
+     * @return \Socialcast\Resource\Badge
+     */
+    public function getBadge($badgeId) {
+        // ** GENERATED CODE **
+        return new \Socialcast\Resource\Badge($this, false, 'badges/'.$badgeId);
     }
 
 }

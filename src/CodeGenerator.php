@@ -4,20 +4,18 @@
  * Extract mappings and autocomplete helpers from the online manual.
  *
  * Generates phpdoc-comments for the dynamic methods of Socialcast\Client.
- * (Requires Laravel's Pluralizer)
+ * (Requires Laravel's Str class)
  */
 
 namespace Socialcast;
 
 use DOMDocument;
-use Illuminate\Support\Pluralizer;
 use Illuminate\Support\Str;
 use Sledgehammer\Curl;
-use Sledgehammer\Object;
 
-class ExtractDocs extends Object {
+class CodeGenerator {
 
-    function clientDocs() {
+    static function run() {
         $dom = new DOMDocument();
         @$dom->loadHTML(Curl::get('http://developers.socialcast.com/api-documentation/api/', array(CURLOPT_FAILONERROR => false))->getContent());
         $xml = simplexml_import_dom($dom);
@@ -47,13 +45,11 @@ class ExtractDocs extends Object {
                         'returnType' => '\\Socialcast\\Resource',
                         'type' => $url[1],
                         'path' => $url[2],
-
                     );
                 }
             }
         }
-        $mapping = array();
-        $docComment = '';
+        $codeMethods = array();
         foreach ($methods as $method) {
             $pathParams = array();
             if (preg_match('/_ID\/.+/', $method['path'])) { // Skip related resources
@@ -65,22 +61,23 @@ class ExtractDocs extends Object {
             if (preg_match('/^(.+)\/([^\/]+_ID)$/', $method['path'], $matches)) { // fetch one
                 $method['name'] = strtolower($method['type']) . ucfirst(Str::singular($matches[1]));
                 if (in_array($method['type'], array('GET', 'DELETE'))) {
-                    $pathParams['[0]'] = $matches[2];
-                    $method['parameters'][] = '$' . Str::camel(strtolower($matches[2]));
+                    $method['parameters'][$matches[2]] = '$' . Str::camel(strtolower($matches[2]));
                     if ($method['type'] === 'GET') {
                         $method['returnType'] = $class;
                     }
                 } else { // POST or PUT
+                    $method['wrapped'] = false;
                     $method['parameters'][] = '$' . Str::singular($matches[1]);
                     if ($method['type'] === 'PUT') {
-                        $pathParams['[0].id'] = $matches[2];
+//                        $pathParams['[0].id'] = $matches[2];
                     }
                 }
-            } elseif (strpos($method['path'], '/') === false) { // fetch all
+            } elseif (strpos($method['path'], '/') === false) { // Add
                 if ($method['type'] === 'POST') {
+                    $method['wrapped'] = false;
                     $method['name'] = strtolower($method['type']) . Str::studly(Str::singular($method['path']));
                     $method['parameters'][] = '$' . Str::singular($resource);
-                } else {
+                } else { // fetch all
                     $method['name'] = strtolower($method['type']) . Str::studly($method['path']);
                     if ($method['type'] === 'GET') {
                         $method['returnType'] = $class . '[]';
@@ -95,34 +92,81 @@ class ExtractDocs extends Object {
                     $method['has_filters'] = true;
                 } else {
 //                    warning('Unexpected method', $method);
+                    continue;
                 }
             }
 
             switch ($method['name']) {
                 case 'getUserinfo':
-                    $method['returnType'] = '\Socialcast\Resource\User';
+                    $class = '\Socialcast\Resource\User';
+                    $method['returnType'] = $class;
+                    break;
+                case 'postMessage':
+                    $method['wrapped'] = 'message';
                     break;
             }
-            // build doccomment
+
+            $code = "\n\t/**";
+            $code .= "\n\t * ".$method['description'];
+            $code .= "\n\t *";
             if ($method['type'] === 'SEARCH') {
-                $docParams = array('$querystring');
-            } else {
-                $docParams = $method['parameters'];
+                $code .= "\n\t * @param string \$querystring  Search query string";
+            }
+            $path = "'".$method['path']."'";
+            foreach ($method['parameters'] as $key => $parameter) {
+                $type = in_array($method['type'], array('POST', 'PUT')) ? 'array' : 'int';
+                $code .= "\n\t * @param ".$type." ".$parameter;
+                $path = str_replace($key, "'.".$parameter.".'", $path);
+            }
+            $path = str_replace(".''", '', $path);
+            if ($method['has_filters']) {
+                $code .= "\n\t * @param array [\$parameter]  Request parameters";
+            }
+            if ($method['type'] !== 'DELETE') {
+                $code .= "\n\t * @return ".$method['returnType'];
+            }
+            $code .= "\n\t */";
+            $parameters = $method['parameters'];
+            if ($method['type'] === 'SEARCH') {
+                $parameters[] = '$querystring';
             }
             if ($method['has_filters']) {
-                $docParams[] = '$parameters = array()';
+                $parameters[] = '$parameters = array()';
+                $pathParameters = ", \$parameters";
+            } else {
+                $pathParameters = '';
             }
-            $docComment .= "\n * @method " . $method['returnType'] . ' ' . $method['name'] . '('.implode(', ', $docParams). ')  ' . $method['description'];
+            $code .= "\n\tpublic function ".$method['name'].'('.implode(', ', $parameters);
 
-            // build mapping
-            $mapping[$method['name']] = array(
-                'path' => $method['path'],
-                'class' => str_replace('[]', '', $method['returnType']),
-                'arguments' => $pathParams,
-            );
+            $code .= ") {";
+            $code .= "\n\t\t// ** GENERATED CODE **";
+            if ($method['type'] === 'GET') {
+                if ($class === $method['returnType']) { // Single return
+                    $code .= "\n\t\treturn new ".$class."(\$this, false, ".$path.$pathParameters.");";
+                } else { // Collection
+                    $code .= "\n\t\treturn ".$class."::all(\$this, ".$path.$pathParameters.");";
+                }
+            } elseif ($method['type'] === 'SEARCH') {
+                $code .= "\n\t\t\$parameters['q'] = \$querystring;";
+                $code .= "\n\t\treturn ".$class."::all(\$this, ".$path.$pathParameters.");";
+            } elseif ($method['type'] === 'POST') {
+                $data = $method['parameters'][0];
+                if ($method['wrapped']) {
+                    $data = "array('".$method['wrapped']."' => ".$data.')';
+                }
+                $code .= "\n\t\t\$response = \$this->post(".$path.", ".$data.");";
+                $code .= "\n\t\treturn new ".$class."(\$this, \$response);";
+            } elseif ($method['type'] === 'DELETE') {
+                $code .= "\n\t\t\$this->delete(".$path.");";
+            } else {
+                // @todo implement PUT
+                $code .= "\n\t\tthrow new \Exception('Not implemented');";
+                continue;
+            }
+            $code .= "\n\t}\n";
+            $codeMethods[$method['name']] = $code;
         }
-        dump($docComment);
-        dump($mapping);
+        dump(str_replace("\t", '    ', implode($codeMethods)));
     }
 
 }

@@ -15,13 +15,18 @@ class ClientTest extends PHPUnit_Framework_TestCase {
      * @return Client
      */
     function getClient() {
-        return new Client(new BasicAuth('demo', 'emily@socialcast.com', 'demo'));
+        static $client = null;
+        if ($client === null) {
+            $client = new Client(new BasicAuth('demo', 'emily@socialcast.com', 'demo'));
+        }
+        return $client;
     }
 
     function testUserinfo() {
         $user = $this->getClient()->getUserinfo();
         $this->assertEquals('Emily James', $user->name);
         $this->assertEquals('Marketing', $user->custom_fields->department);
+        $this->assertEquals($user->name, $this->getClient()->getUser($user->id)->name, 'Retrieving via ID results to the same user');
     }
 
     function testTraversalAndLazyLoading() {
@@ -52,5 +57,15 @@ class ClientTest extends PHPUnit_Framework_TestCase {
     function testSearch() {
         $results = $this->getClient()->searchUsers('Emily James');
         $this->assertCount(1, $results);
+    }
+
+    function testPost() {
+        $message = $this->getClient()->postMessage(array(
+            'body' => 'Test message'
+        ));
+        $this->assertInstanceOf('Socialcast\Resource\Message', $message);
+        $this->assertNotNull($message->id);
+        $this->assertEquals(0, $message->likes_count);
+        $this->getClient()->deleteMessage($message->id);
     }
 }
