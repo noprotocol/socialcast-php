@@ -116,6 +116,15 @@ class Client extends Object {
         try {
             $responseBody = $response->getBody();
             if ($response->http_code < 400) {
+                $this->logger->append($path, array(
+                    'duration' => microtime(true) - $start,
+                    'url' => $request[CURLOPT_URL],
+                    'method' => $method,
+                    'response' => array(
+                        'length' => strlen($responseBody)
+                    ),
+                    'success' => true
+                ));
                 return Json::decode($responseBody);
             }
             if ($response->http_code == 401) {
@@ -124,15 +133,13 @@ class Client extends Object {
             $message = @Framework::$statusCodes[$response->http_code];
             throw new Exception('[Socialcast] ' . $response->http_code . ' ' . $message);
         } catch (Exception $e) {
-            throw $e;
-        } finally {
             $this->logger->append($path, array(
                 'duration' => microtime(true) - $start,
                 'url' => $request[CURLOPT_URL],
                 'method' => $method,
-                'response' => array(
-                    'length' => isset($responseBody) ? strlen($responseBody) : ''
-            )));
+                'success' => false
+            ));
+            throw $e;
         }
     }
 
@@ -176,8 +183,16 @@ class Client extends Object {
 
     function renderEntry($entry, $meta) {
         echo '<td>', $meta['method'], '</td>';
-        echo '<td>', Html::element('a', array('href' => $meta['url'], 'target' => '_blank'), $entry), '</td>';
-        echo '<td class="logentry-number">', number_format($meta['response']['length'] / 1024, 2), 'KiB</td>';
+        $link = array('href' => $meta['url'], 'target' => '_blank');
+        if (!$meta['success']) {
+            $link['class'] = 'logentry-alert';
+        }
+        echo '<td>', Html::element('a', $link, $entry), '</td>';
+        echo '<td class="logentry-number">';
+        if (isset($meta['response']['length'])) {
+             echo number_format($meta['response']['length'] / 1024, 2), 'KiB';
+        }
+        echo '</td>';
         $duration = $meta['duration'];
         if ($duration > 3) {
             $color = 'logentry-alert';
