@@ -35,8 +35,12 @@ class User extends Resource {
         }
     }
 
-    public function getMessages() {
-        return Message::all($this->client, 'users/'.$this->id.'/messages');
+    /**
+     * Stream of Messages by User
+     * @link http://developers.socialcast.com/api-documentation/api/users/index-messages/
+     */
+    public function getMessages($parameters = array()) {
+        return Message::all($this->client, 'users/'.$this->id.'/messages', $parameters);
     }
 
 }

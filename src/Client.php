@@ -109,13 +109,7 @@ class Client extends Object {
                 break;
         }
         if ($data !== null) {
-            $request[CURLOPT_POSTFIELDS] = $data;
-            foreach ($data as $value) {
-                if (is_array($value)) {
-                    $request[CURLOPT_POSTFIELDS] = http_build_query($data);
-                    break;
-                }
-            }
+            $request[CURLOPT_POSTFIELDS] = $this->postFields($data);
         }
         $request = $this->auth->sign($request);
         $response = new Curl($request);
@@ -157,6 +151,27 @@ class Client extends Object {
             $suffix = '?' . http_build_query($parameters);
         }
         return 'https://' . $this->auth->subdomain . '.socialcast.com/api/' . $path . '.json' . $suffix;
+    }
+
+    /**
+     * Process post data, allows for file entries in nested arrays.
+     */
+    private function postFields(&$data, $prefix = false) {
+        if (is_array($data) === false) {
+            return $data;
+        }
+        $postFields = array();
+        foreach ($data as $key => $value) {
+            if ($prefix) {
+                $key = $prefix.'['.$key.']';
+            }
+            if (is_array($value) === false) {
+                $postFields[$key] = $value;
+            } else {
+                $postFields = array_merge($postFields, $this->postFields($value, $key));
+            }
+        }
+        return $postFields;
     }
 
     function renderEntry($entry, $meta) {

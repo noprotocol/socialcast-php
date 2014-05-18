@@ -2,6 +2,7 @@
 
 namespace Socialcast\Resource;
 use Socialcast\Client;
+use Exception;
 
 class Resource {
 
@@ -93,24 +94,13 @@ class Resource {
 
     /**
      *
-     * @param string $path
-     * @param string $class
-     * @return \Socialcast\Resource[]
-     * @throws Exception
-     */
-//    protected function fetchCollection($path, $class) {
-
-//    }
-
-    /**
-     *
      * @param Client $client
      * @param string $path
      * @param array [$parameters]
      */
     static function all($client, $path, $parameters = array()) {
         $response = $client->get($path, $parameters);
-        if (is_object($response) && count(get_object_vars($response)) === 1) { // Response is wrapped with a rootNode?
+        if (is_object($response) && count(get_object_vars($response)) <= 2) { // Response is wrapped with a rootNode?
             $response = current($response); // unwrap
         }
         if (is_array($response) === false) {
