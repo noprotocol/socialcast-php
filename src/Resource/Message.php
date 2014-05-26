@@ -39,10 +39,18 @@ namespace Socialcast\Resource;
  */
 class Message extends Resource {
 
+    /**
+     * Add a like for the authenticated user for a particular message.
+     * @link http://developers.socialcast.com/api-documentation/api/likes/create-message-like/
+     */
     public function like() {
         return $this->client->post('messages/'.$this->id.'/likes', array());
     }
 
+    /**
+     * Un-like a message for the authenticated user.
+     * @link http://developers.socialcast.com/api-documentation/api/likes/destroy-message-like/
+     */
     public function unlike() {
         foreach ($this->likes as $like) {
             if ($like->unlikable) {
@@ -51,6 +59,21 @@ class Message extends Resource {
             }
         }
         return false;
+    }
+
+    /**
+     * Create a new comment for an existing message.
+     * @link http://developers.socialcast.com/api-documentation/api/comments/create/
+     *
+     * @param type $message
+     */
+    public function postComment($message) {
+        if ($message == '') {
+            throw new \Exception('Message is required');
+        }
+        $this->client->post('messages/'.$this->id.'/comments', array(
+            'comment[text]' => $message
+        ));
     }
 
 }

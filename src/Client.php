@@ -130,8 +130,15 @@ class Client extends Object {
             if ($response->http_code == 401) {
                 throw new Exception('[Socialcast] Invalid credentials, 401 '.Framework::$statusCodes[401]);
             }
+            $error = json_decode($responseBody);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                if (isset($error->errors)) {
+                    throw new InfoException('[Socialcast] '.$error->errors[0], $error);
+                }
+            }
             $message = @Framework::$statusCodes[$response->http_code];
             throw new Exception('[Socialcast] ' . $response->http_code . ' ' . $message);
+
         } catch (Exception $e) {
             $this->logger->append($path, array(
                 'duration' => microtime(true) - $start,

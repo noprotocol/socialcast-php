@@ -4,6 +4,7 @@ namespace Socialcast\Auth;
 
 use Exception;
 use Sledgehammer\Curl;
+use Sledgehammer\Framework;
 use Sledgehammer\Json;
 
 /**
@@ -65,8 +66,16 @@ class OAuth extends AbstractAuth {
             $code = $_GET['code'];
         }
         $url = 'https://' . $this->subdomain . '.socialcast.com/oauth2/token?grant_type=authorization_code&code=' . urlencode($code) . '&redirect_uri=' . urlencode($this->callbackUrl);
-        $request = Curl::post($url, array('client_id' => $this->appId, 'client_secret' => $this->appSecret));
-        $this->token = Json::decode($request->getBody());
+        $response = Curl::post($url, array('client_id' => $this->appId, 'client_secret' => $this->appSecret), array(CURLOPT_FAILONERROR => false));
+        if ($response->http_code != 200) {
+            $error = json_decode($response->getBody());
+            if (json_last_error() === JSON_ERROR_NONE) {
+                throw new Exception('[Socialcast:'.$error->error.'] '.$error->error_description);
+            }
+            $message = @Framework::$statusCodes[$response->http_code];
+            throw new Exception('[Socialcast] ' . $response->http_code . ' ' . $message);
+        }
+        $this->token = Json::decode($response->getBody());
         $this->token->expires_at = (time() + $this->token->expires_in) - 30;
         $this->storeToken();
     }
