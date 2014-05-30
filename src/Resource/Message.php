@@ -76,4 +76,13 @@ class Message extends Resource {
         ));
     }
 
+    protected function convertProperty($property) {
+        switch ($property) {
+
+            case 'user':
+                $this->response->user = new User($this->client, $this->response->user, 'users/'.$this->response->user->id);
+                break;
+        }
+    }
+
 }
