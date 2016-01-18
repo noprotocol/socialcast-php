@@ -95,6 +95,7 @@ class Client extends Object {
         $request = Curl::$defaults;
         $request[CURLOPT_URL] = $this->buildUrl($path, $parameters);
         $request[CURLOPT_FAILONERROR] = false;
+        $allowEmpty = false;
         switch ($method) {
             case 'GET':
                 break;
@@ -106,6 +107,7 @@ class Client extends Object {
                 break;
             case 'DELETE':
                 $request[CURLOPT_CUSTOMREQUEST] = 'DELETE';
+                $allowEmpty = true;
                 break;
         }
         if ($data !== null) {
@@ -125,6 +127,9 @@ class Client extends Object {
                     ),
                     'success' => true
                 ));
+                if ($allowEmpty && $responseBody === '') {
+                    return;
+                }
                 return Json::decode($responseBody);
             }
             if ($response->http_code == 401) {
